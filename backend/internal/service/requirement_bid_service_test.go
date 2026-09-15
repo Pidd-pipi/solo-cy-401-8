@@ -12,7 +12,8 @@ import (
 func TestRequirementServiceRoleAndUpdate(t *testing.T) {
 	db := newFlowTestDB(t)
 	logSvc := NewOperationLogService(repository.NewOperationLogRepository(db), discardLogger())
-	reqSvc := NewRequirementService(repository.NewRequirementRepository(db), repository.NewBidRepository(db), logSvc, discardLogger())
+	notifSvc := NewNotificationService(repository.NewNotificationRepository(db), discardLogger())
+	reqSvc := NewRequirementService(repository.NewRequirementRepository(db), repository.NewBidRepository(db), notifSvc, logSvc, discardLogger())
 
 	requester := &model.User{Username: "req-role", Name: "需求方", Role: constants.RoleRequester}
 	freelancer := &model.User{Username: "free-role", Name: "自由职业者", Role: constants.RoleFreelancer}
@@ -68,8 +69,9 @@ func TestRequirementServiceRoleAndUpdate(t *testing.T) {
 func TestBidServiceCreateAndWithdraw(t *testing.T) {
 	db := newFlowTestDB(t)
 	logSvc := NewOperationLogService(repository.NewOperationLogRepository(db), discardLogger())
-	reqSvc := NewRequirementService(repository.NewRequirementRepository(db), repository.NewBidRepository(db), logSvc, discardLogger())
-	bidSvc := NewBidService(repository.NewBidRepository(db), repository.NewRequirementRepository(db), logSvc, discardLogger())
+	notifSvc := NewNotificationService(repository.NewNotificationRepository(db), discardLogger())
+	reqSvc := NewRequirementService(repository.NewRequirementRepository(db), repository.NewBidRepository(db), notifSvc, logSvc, discardLogger())
+	bidSvc := NewBidService(repository.NewBidRepository(db), repository.NewRequirementRepository(db), notifSvc, logSvc, discardLogger())
 
 	requester := &model.User{Username: "req-bid", Name: "需求方", Role: constants.RoleRequester}
 	freelancer := &model.User{Username: "free-bid", Name: "自由职业者", Role: constants.RoleFreelancer}

@@ -17,6 +17,10 @@
     "/api/v1/contracts/{id}/sign": { "post": {} },
     "/api/v1/contracts/{id}/complete": { "post": {} },
     "/api/v1/dashboard": { "get": {} },
+    "/api/v1/notifications": { "get": {} },
+    "/api/v1/notifications/unread-count": { "get": {} },
+    "/api/v1/notifications/{id}/read": { "post": {} },
+    "/api/v1/notifications/read-all": { "post": {} },
     "/api/v1/operation-logs": { "get": {} },
     "/healthz": { "get": {} }
   },

@@ -73,6 +73,20 @@ export interface PageResult<T> {
   page_size: number;
 }
 
+export interface Notification {
+  id: number;
+  recipientId: number;
+  bizType: string;
+  bizId: number;
+  bizNo: string;
+  refId: number;
+  title: string;
+  content: string;
+  isRead: boolean;
+  occurredAt: string;
+  createdAt: string;
+}
+
 export interface DashboardData {
   myRequirements: Requirement[];
   myBids: Bid[];

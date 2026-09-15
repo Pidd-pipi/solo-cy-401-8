@@ -50,6 +50,7 @@ func run(logger *slog.Logger) error {
 		&model.Bid{},
 		&model.Contract{},
 		&model.OperationLog{},
+		&model.Notification{},
 	); err != nil {
 		return fmt.Errorf("auto migrate: %w", err)
 	}
@@ -140,14 +141,16 @@ func buildHandlers(cfg *config.Config, db *gorm.DB, logger *slog.Logger) (*route
 	bidRepo := repository.NewBidRepository(db)
 	contractRepo := repository.NewContractRepository(db)
 	logRepo := repository.NewOperationLogRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
 
 	logSvc := service.NewOperationLogService(logRepo, logger)
+	notificationSvc := service.NewNotificationService(notificationRepo, logger)
 	authSvc := service.NewAuthService(cfg, userRepo, logSvc, logger)
 	userSvc := service.NewUserService(userRepo, logSvc, logger)
-	contractSvc := service.NewContractService(contractRepo, logSvc, logger)
-	bidSvc := service.NewBidService(bidRepo, reqRepo, logSvc, logger)
-	reqSvc := service.NewRequirementService(reqRepo, bidRepo, logSvc, logger)
-	dashboardSvc := service.NewDashboardService(reqRepo, bidRepo, contractRepo, logger)
+	contractSvc := service.NewContractService(contractRepo, notificationSvc, logSvc, logger)
+	bidSvc := service.NewBidService(bidRepo, reqRepo, notificationSvc, logSvc, logger)
+	reqSvc := service.NewRequirementService(reqRepo, bidRepo, notificationSvc, logSvc, logger)
+	dashboardSvc := service.NewDashboardService(reqRepo, bidRepo, contractRepo, notificationRepo, logger)
 
 	return &router.Handlers{
 		Auth:         handler.NewAuthHandler(authSvc, logger),
@@ -156,6 +159,7 @@ func buildHandlers(cfg *config.Config, db *gorm.DB, logger *slog.Logger) (*route
 		Bid:          handler.NewBidHandler(bidSvc, logger),
 		Contract:     handler.NewContractHandler(contractSvc, logger),
 		Dashboard:    handler.NewDashboardHandler(dashboardSvc, logger),
+		Notification: handler.NewNotificationHandler(notificationSvc, logger),
 		OperationLog: handler.NewOperationLogHandler(logSvc, logger),
 	}, userRepo, logSvc
 }

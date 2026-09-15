@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import type { User } from '../types';
 import { authApi } from '../api/auth';
+import { useNotificationStore } from './notification';
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -19,6 +20,7 @@ export const useUserStore = defineStore('user', {
       this.user = data.user;
       localStorage.setItem('cyf_token', data.token);
       localStorage.setItem('cyf_user', JSON.stringify(data.user));
+      useNotificationStore().reset();
     },
     async register(payload: { username: string; password: string; email?: string; name?: string; role: string }) {
       const data = await authApi.register(payload);
@@ -26,6 +28,7 @@ export const useUserStore = defineStore('user', {
       this.user = data.user;
       localStorage.setItem('cyf_token', data.token);
       localStorage.setItem('cyf_user', JSON.stringify(data.user));
+      useNotificationStore().reset();
     },
     async refresh() {
       if (!this.token) return;
@@ -41,6 +44,7 @@ export const useUserStore = defineStore('user', {
       this.user = null;
       localStorage.removeItem('cyf_token');
       localStorage.removeItem('cyf_user');
+      useNotificationStore().reset();
     }
   }
 });

@@ -3,6 +3,7 @@ package service
 import (
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 
 	"gorm.io/driver/sqlite"
@@ -16,11 +17,13 @@ import (
 
 func newFlowTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	// Unique in-memory database per test so cases do not share rows.
+	dsn := "file:" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.Requirement{}, &model.Bid{}, &model.Contract{}, &model.OperationLog{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Requirement{}, &model.Bid{}, &model.Contract{}, &model.OperationLog{}, &model.Notification{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	return db
@@ -35,6 +38,7 @@ func TestAcceptBidCreatesContract(t *testing.T) {
 	bidRepo := repository.NewBidRepository(db)
 	contractRepo := repository.NewContractRepository(db)
 	logRepo := repository.NewOperationLogRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
 
 	requester := &model.User{Username: "req1", PasswordHash: "x", Name: "需求方", Role: constants.RoleRequester}
 	freelancer := &model.User{Username: "free1", PasswordHash: "x", Name: "自由职业者", Role: constants.RoleFreelancer}
@@ -46,9 +50,10 @@ func TestAcceptBidCreatesContract(t *testing.T) {
 	}
 
 	logSvc := NewOperationLogService(logRepo, logger)
-	contractSvc := NewContractService(contractRepo, logSvc, logger)
-	reqSvc := NewRequirementService(reqRepo, bidRepo, logSvc, logger)
-	bidSvc := NewBidService(bidRepo, reqRepo, logSvc, logger)
+	notifSvc := NewNotificationService(notificationRepo, logger)
+	contractSvc := NewContractService(contractRepo, notifSvc, logSvc, logger)
+	reqSvc := NewRequirementService(reqRepo, bidRepo, notifSvc, logSvc, logger)
+	bidSvc := NewBidService(bidRepo, reqRepo, notifSvc, logSvc, logger)
 
 	requirement, err := reqSvc.Create(dto.CreateRequirementRequest{
 		Title: "开发官网后台", Description: "需要一个功能完整的后台管理系统", MinBudget: 30000, MaxBudget: 60000, Skills: []string{"Go"},

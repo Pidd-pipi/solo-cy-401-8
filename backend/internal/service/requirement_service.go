@@ -12,15 +12,16 @@ import (
 
 // RequirementService manages requirements.
 type RequirementService struct {
-	requirements *repository.RequirementRepository
-	bids         *repository.BidRepository
-	logs         *OperationLogService
-	logger       *slog.Logger
+	requirements  *repository.RequirementRepository
+	bids          *repository.BidRepository
+	notifications *NotificationService
+	logs          *OperationLogService
+	logger        *slog.Logger
 }
 
 // NewRequirementService builds a RequirementService.
-func NewRequirementService(requirements *repository.RequirementRepository, bids *repository.BidRepository, logs *OperationLogService, logger *slog.Logger) *RequirementService {
-	return &RequirementService{requirements: requirements, bids: bids, logs: logs, logger: logger}
+func NewRequirementService(requirements *repository.RequirementRepository, bids *repository.BidRepository, notifications *NotificationService, logs *OperationLogService, logger *slog.Logger) *RequirementService {
+	return &RequirementService{requirements: requirements, bids: bids, notifications: notifications, logs: logs, logger: logger}
 }
 
 // List returns requirements with filters and pagination.
@@ -161,5 +162,15 @@ func (s *RequirementService) AcceptBid(requirementID, bidID, userID uint, userNa
 		return nil, err
 	}
 	s.logs.Record(userID, userName, "requirement.accept_bid", "requirement", r.ID, fmt.Sprintf("采纳报价 %d", bidID))
+	// Notify the winning freelancer that their bid was accepted.
+	s.notifications.Notify(NotifyCommand{
+		RecipientID: bid.BidderID,
+		BizType:     constants.NotificationBidAccepted,
+		BizID:       bid.ID,
+		BizNo:       fmt.Sprintf("报价 #%d", bid.ID),
+		RefID:       r.ID,
+		Title:       "报价已被采纳",
+		Content:     fmt.Sprintf("你对需求「%s」的报价（%.2f 元）已被采纳，合同 %s 已生成待签署。", r.Title, bid.Amount, contract.ContractNo),
+	})
 	return contract, nil
 }

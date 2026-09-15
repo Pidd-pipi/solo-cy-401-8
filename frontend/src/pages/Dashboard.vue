@@ -6,14 +6,34 @@
     </div>
 
     <el-row :gutter="16" class="stats">
-      <el-col :span="8">
-        <el-card><div class="stat"><b>{{ data?.counts.requirements || 0 }}</b><span class="muted">已发布需求</span></div></el-card>
+      <el-col :span="6">
+        <el-card>
+          <div class="stat">
+            <b>{{ data?.counts.requirements || 0 }}</b><span class="muted">已发布需求</span>
+          </div>
+        </el-card>
       </el-col>
-      <el-col :span="8">
-        <el-card><div class="stat"><b>{{ data?.counts.bids || 0 }}</b><span class="muted">已提交报价</span></div></el-card>
+      <el-col :span="6">
+        <el-card>
+          <div class="stat">
+            <b>{{ data?.counts.bids || 0 }}</b><span class="muted">已提交报价</span>
+          </div>
+        </el-card>
       </el-col>
-      <el-col :span="8">
-        <el-card><div class="stat"><b>{{ data?.counts.contracts || 0 }}</b><span class="muted">进行中合同</span></div></el-card>
+      <el-col :span="6">
+        <el-card>
+          <div class="stat">
+            <b>{{ data?.counts.contracts || 0 }}</b><span class="muted">进行中合同</span>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="notif-stat" @click="$router.push('/notifications')">
+          <div class="stat">
+            <b :class="{ alert: (data?.counts.unreadNotifications || 0) > 0 }">{{ data?.counts.unreadNotifications || 0 }}</b>
+            <span class="muted">未读通知</span>
+          </div>
+        </el-card>
       </el-col>
     </el-row>
 
@@ -70,4 +90,7 @@ onMounted(() => void load());
 .stats { margin-bottom: 20px; }
 .stat { display: flex; flex-direction: column; align-items: center; padding: 8px; }
 .stat b { font-size: 28px; color: #243b53; }
+.stat b.alert { color: #f56c6c; }
+.notif-stat { cursor: pointer; }
+.notif-stat :deep(.el-card__body) { padding: 10px; }
 </style>

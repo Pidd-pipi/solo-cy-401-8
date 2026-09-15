@@ -17,15 +17,16 @@ type DashboardData struct {
 
 // DashboardService aggregates workbench data.
 type DashboardService struct {
-	requirements *repository.RequirementRepository
-	bids         *repository.BidRepository
-	contracts    *repository.ContractRepository
-	logger       *slog.Logger
+	requirements  *repository.RequirementRepository
+	bids          *repository.BidRepository
+	contracts     *repository.ContractRepository
+	notifications *repository.NotificationRepository
+	logger        *slog.Logger
 }
 
 // NewDashboardService builds a DashboardService.
-func NewDashboardService(requirements *repository.RequirementRepository, bids *repository.BidRepository, contracts *repository.ContractRepository, logger *slog.Logger) *DashboardService {
-	return &DashboardService{requirements: requirements, bids: bids, contracts: contracts, logger: logger}
+func NewDashboardService(requirements *repository.RequirementRepository, bids *repository.BidRepository, contracts *repository.ContractRepository, notifications *repository.NotificationRepository, logger *slog.Logger) *DashboardService {
+	return &DashboardService{requirements: requirements, bids: bids, contracts: contracts, notifications: notifications, logger: logger}
 }
 
 // Get returns the workbench payload for a user.
@@ -54,14 +55,19 @@ func (s *DashboardService) Get(userID uint) (*DashboardData, error) {
 	if err != nil {
 		return nil, err
 	}
+	unreadNotifications, err := s.notifications.CountUnread(userID)
+	if err != nil {
+		return nil, err
+	}
 	return &DashboardData{
 		MyRequirements: myRequirements,
 		MyBids:         myBids,
 		MyContracts:    myContracts,
 		Counts: map[string]int64{
-			"requirements": reqCount,
-			"bids":         bidCount,
-			"contracts":    contractCount,
+			"requirements":        reqCount,
+			"bids":                bidCount,
+			"contracts":           contractCount,
+			"unreadNotifications": unreadNotifications,
 		},
 	}, nil
 }

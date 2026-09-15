@@ -12,15 +12,16 @@ import (
 
 // BidService manages bids.
 type BidService struct {
-	bids         *repository.BidRepository
-	requirements *repository.RequirementRepository
-	logs         *OperationLogService
-	logger       *slog.Logger
+	bids          *repository.BidRepository
+	requirements  *repository.RequirementRepository
+	notifications *NotificationService
+	logs          *OperationLogService
+	logger        *slog.Logger
 }
 
 // NewBidService builds a BidService.
-func NewBidService(bids *repository.BidRepository, requirements *repository.RequirementRepository, logs *OperationLogService, logger *slog.Logger) *BidService {
-	return &BidService{bids: bids, requirements: requirements, logs: logs, logger: logger}
+func NewBidService(bids *repository.BidRepository, requirements *repository.RequirementRepository, notifications *NotificationService, logs *OperationLogService, logger *slog.Logger) *BidService {
+	return &BidService{bids: bids, requirements: requirements, notifications: notifications, logs: logs, logger: logger}
 }
 
 // ListByRequirement returns bids of a requirement.
@@ -64,6 +65,17 @@ func (s *BidService) Create(req dto.CreateBidRequest, userID uint, userName stri
 		return nil, fmt.Errorf("create bid: %w", err)
 	}
 	s.logs.Record(userID, userName, "bid.create", "bid", bid.ID, fmt.Sprintf("提交报价 %.2f", bid.Amount))
+	// Notify the requirement publisher; self-bidding is rejected above so the
+	// recipient is always the other party.
+	s.notifications.Notify(NotifyCommand{
+		RecipientID: r.PublisherID,
+		BizType:     constants.NotificationBidSubmitted,
+		BizID:       bid.ID,
+		BizNo:       fmt.Sprintf("报价 #%d", bid.ID),
+		RefID:       r.ID,
+		Title:       "收到新报价",
+		Content:     fmt.Sprintf("你发布的需求「%s」收到一条新报价：金额 %.2f 元，工期 %d 天。", r.Title, bid.Amount, bid.DurationDays),
+	})
 	return bid, nil
 }
 

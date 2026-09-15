@@ -26,6 +26,7 @@ docker compose up -d --build
 - 需求详情：完整信息 + 报价列表（需求方视角）+ 报价提交表单（自由职业者视角）
 - 我的工作台：分角色展示已发布需求、已报价项目、进行中合同
 - 合同详情：条款、阶段进度（分阶段付款进度条）、双方信息
+- 通知中心：报价提交、报价被采纳、合同签署/完成时向对方推送站内通知；倒序列表、单条与全部标记已读、顶栏未读角标、工作台未读计数
 - 个人资料：展示/编辑个人信息、技能标签、历史项目
 - 横切：JWT 认证授权、操作日志、路由守卫、请求拦截器自动带 token
 
@@ -108,6 +109,7 @@ npm run dev
 | BidStatus（pending/accepted/rejected/withdrawn） | `backend/internal/constants/bid_status.go` | `frontend/src/types/enums.ts` | RequirementDetail、Dashboard |
 | ContractStatus（pending_signature/in_progress/pending_review/completed/terminated） | `backend/internal/constants/contract_status.go` | `frontend/src/types/enums.ts` | ContractDetail、Dashboard |
 | UserRole（requester/freelancer/both/admin） | `backend/internal/constants/roles.go` | `frontend/src/types/enums.ts` | Layout、RequirementDetail、Dashboard |
+| NotificationType（bid_submitted/bid_accepted/contract_signed/contract_completed） | `backend/internal/constants/notification_type.go` | `frontend/src/types/enums.ts` | Layout 铃铛、Notifications 通知中心、Dashboard 未读数 |
 
 ## 主要 API 列表
 
@@ -125,7 +127,11 @@ npm run dev
 | GET | /api/v1/contracts | 我的合同 |
 | GET | /api/v1/contracts/:id | 合同详情 |
 | POST | /api/v1/contracts/:id/sign · /complete | 签署/完成 |
-| GET | /api/v1/dashboard | 我的工作台 |
+| GET | /api/v1/notifications | 通知列表（倒序，支持 unreadOnly/page/page_size） |
+| GET | /api/v1/notifications/unread-count | 未读数 |
+| POST | /api/v1/notifications/:id/read | 单条标记已读（仅本人，越权/不存在返回 404） |
+| POST | /api/v1/notifications/read-all | 全部标记已读 |
+| GET | /api/v1/dashboard | 我的工作台（counts 含 unreadNotifications） |
 | GET/PATCH | /api/v1/users/:id | 个人资料 |
 | GET | /api/v1/operation-logs | 操作日志 |
 | GET | /healthz、/readyz | 健康检查 |

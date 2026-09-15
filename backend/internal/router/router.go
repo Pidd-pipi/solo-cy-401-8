@@ -29,6 +29,7 @@ type Handlers struct {
 	Bid          *handler.BidHandler
 	Contract     *handler.ContractHandler
 	Dashboard    *handler.DashboardHandler
+	Notification *handler.NotificationHandler
 	OperationLog *handler.OperationLogHandler
 }
 
@@ -87,6 +88,10 @@ func New(cfg *config.Config, logger *slog.Logger, h *Handlers, users *repository
 		protected.POST("/contracts/:id/sign", h.Contract.Sign)
 		protected.POST("/contracts/:id/complete", h.Contract.Complete)
 		protected.GET("/dashboard", h.Dashboard.Get)
+		protected.GET("/notifications", h.Notification.List)
+		protected.GET("/notifications/unread-count", h.Notification.UnreadCount)
+		protected.POST("/notifications/:id/read", h.Notification.MarkRead)
+		protected.POST("/notifications/read-all", h.Notification.MarkAllRead)
 		protected.GET("/operation-logs", h.OperationLog.List)
 	}
 

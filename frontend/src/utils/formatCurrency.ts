@@ -9,3 +9,11 @@ export function formatDate(value?: string | null): string {
   if (Number.isNaN(d.getTime())) return '-';
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+
+export function formatDateTime(value?: string | null): string {
+  if (!value) return '-';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '-';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${formatDate(value)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

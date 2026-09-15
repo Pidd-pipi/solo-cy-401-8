@@ -65,3 +65,26 @@ export const RoleLabel: Record<string, string> = {
   both: '双角色',
   admin: '管理员'
 };
+
+// 通知业务类型（与后端 backend/internal/constants/notification_type.go 对齐）
+export enum NotificationType {
+  BidSubmitted = 'bid_submitted',
+  BidAccepted = 'bid_accepted',
+  ContractSigned = 'contract_signed',
+  ContractCompleted = 'contract_completed'
+}
+
+export const NotificationTypeLabel: Record<string, string> = {
+  bid_submitted: '报价提交',
+  bid_accepted: '报价采纳',
+  contract_signed: '合同签署',
+  contract_completed: '合同完成'
+};
+
+// el-tag 视觉类型
+export const NotificationTagType: Record<string, 'primary' | 'success' | 'warning' | 'info'> = {
+  bid_submitted: 'warning',
+  bid_accepted: 'success',
+  contract_signed: 'primary',
+  contract_completed: 'success'
+};

@@ -11,14 +11,15 @@ import (
 
 // ContractService manages contracts.
 type ContractService struct {
-	contracts *repository.ContractRepository
-	logs      *OperationLogService
-	logger    *slog.Logger
+	contracts     *repository.ContractRepository
+	notifications *NotificationService
+	logs          *OperationLogService
+	logger        *slog.Logger
 }
 
 // NewContractService builds a ContractService.
-func NewContractService(contracts *repository.ContractRepository, logs *OperationLogService, logger *slog.Logger) *ContractService {
-	return &ContractService{contracts: contracts, logs: logs, logger: logger}
+func NewContractService(contracts *repository.ContractRepository, notifications *NotificationService, logs *OperationLogService, logger *slog.Logger) *ContractService {
+	return &ContractService{contracts: contracts, notifications: notifications, logs: logs, logger: logger}
 }
 
 // ListByParty returns contracts involving the caller.
@@ -79,6 +80,21 @@ func (s *ContractService) Sign(id uint, userID uint, userName string) (*model.Co
 		return nil, fmt.Errorf("sign contract: %w", err)
 	}
 	s.logs.Record(userID, userName, "contract.sign", "contract", c.ID, "签署确认合同")
+	// Notify the other party. Retries stay on pending_signature (conflict),
+	// so the event can only be emitted once per contract.
+	otherPartyID := c.PartyBID
+	if userID == c.PartyBID {
+		otherPartyID = c.PartyAID
+	}
+	s.notifications.Notify(NotifyCommand{
+		RecipientID: otherPartyID,
+		BizType:     constants.NotificationContractSigned,
+		BizID:       c.ID,
+		BizNo:       c.ContractNo,
+		RefID:       c.RequirementID,
+		Title:       "合同已签署",
+		Content:     fmt.Sprintf("合同 %s 已由对方签署确认，项目进入执行阶段。", c.ContractNo),
+	})
 	return c, nil
 }
 
@@ -102,5 +118,15 @@ func (s *ContractService) Complete(id uint, userID uint, userName string) (*mode
 		return nil, fmt.Errorf("complete contract: %w", err)
 	}
 	s.logs.Record(userID, userName, "contract.complete", "contract", c.ID, "确认合同完成")
+	// Only party A (requester) can reach this point; notify the freelancer.
+	s.notifications.Notify(NotifyCommand{
+		RecipientID: c.PartyBID,
+		BizType:     constants.NotificationContractCompleted,
+		BizID:       c.ID,
+		BizNo:       c.ContractNo,
+		RefID:       c.RequirementID,
+		Title:       "合同已完成",
+		Content:     fmt.Sprintf("合同 %s 已被确认完成，项目已结项。", c.ContractNo),
+	})
 	return c, nil
 }

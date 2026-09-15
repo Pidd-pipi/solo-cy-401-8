@@ -5,5 +5,6 @@ export const apiPaths = {
   contracts: '/contracts',
   users: '/users',
   dashboard: '/dashboard',
+  notifications: '/notifications',
   operationLogs: '/operation-logs'
 };

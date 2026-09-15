@@ -15,6 +15,7 @@ const router = createRouter({
         { path: 'requirements', name: 'Requirements', component: () => import('../pages/Requirements.vue') },
         { path: 'requirements/:id', name: 'RequirementDetail', component: () => import('../pages/RequirementDetail.vue') },
         { path: 'dashboard', name: 'Dashboard', component: () => import('../pages/Dashboard.vue') },
+        { path: 'notifications', name: 'Notifications', component: () => import('../pages/Notifications.vue') },
         { path: 'contracts/:id', name: 'ContractDetail', component: () => import('../pages/ContractDetail.vue') },
         { path: 'profile/:id', name: 'Profile', component: () => import('../pages/Profile.vue') }
       ]
