@@ -43,6 +43,16 @@ go run ./cmd/server
 
 构建检查：`go build ./...`；测试：`go test ./...`
 
+通知可靠性的**真实持久化测试**（独立 TCP 连接、InnoDB 行锁，默认跳过，不使用内存替身/mock/单连接串行化）：
+
+```bash
+# 指向任意 MySQL 8.0 / MariaDB 10.11+ 实例
+GIGMATCH_TEST_MYSQL_DSN='root:pass@tcp(127.0.0.1:3306)/?parseTime=true&charset=utf8mb4&loc=Local' \
+  backend/scripts/run_real_persistence_tests.sh
+```
+
+覆盖：四个业务动作分别注入通知表故障→业务整体回滚、恢复后重试只留一条通知；多连接并发采纳同一报价/不同报价、双方同时签署、并发完成，均恰好一个成功其余得到 409 冲突，状态迁移与通知数量唯一；越权/被拒绝请求零新增通知；已读记录在事件重放后保持原样。失败信息带 `[stage:阶段][readback]` 与实际回读结果。
+
 ### 前端（Vue 3 + TypeScript + Element Plus + Vite）
 
 ```bash

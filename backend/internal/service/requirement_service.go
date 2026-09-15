@@ -149,6 +149,12 @@ func (s *RequirementService) AcceptBid(requirementID, bidID, userID uint, userNa
 		if r.PublisherID != userID {
 			return constants.ErrForbidden
 		}
+		// The requirement row is locked first, so concurrent accepts (of the
+		// same or a different bid) serialize here; a replay observes the
+		// winner and is rejected as conflict.
+		if r.WinnerID != 0 || r.Status == constants.RequirementInProgress {
+			return constants.NewAppError(constants.CodeConflict, "该需求已采纳报价")
+		}
 		bid, err := txBids.FindByIDForUpdate(bidID)
 		if err != nil {
 			return err
