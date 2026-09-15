@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"gorm.io/gorm"
+
 	"github.com/gigmatch/gigmatch/internal/constants"
 	"github.com/gigmatch/gigmatch/internal/dto"
 	"github.com/gigmatch/gigmatch/internal/model"
@@ -12,6 +14,7 @@ import (
 
 // RequirementService manages requirements.
 type RequirementService struct {
+	db            *gorm.DB
 	requirements  *repository.RequirementRepository
 	bids          *repository.BidRepository
 	notifications *NotificationService
@@ -20,8 +23,8 @@ type RequirementService struct {
 }
 
 // NewRequirementService builds a RequirementService.
-func NewRequirementService(requirements *repository.RequirementRepository, bids *repository.BidRepository, notifications *NotificationService, logs *OperationLogService, logger *slog.Logger) *RequirementService {
-	return &RequirementService{requirements: requirements, bids: bids, notifications: notifications, logs: logs, logger: logger}
+func NewRequirementService(db *gorm.DB, requirements *repository.RequirementRepository, bids *repository.BidRepository, notifications *NotificationService, logs *OperationLogService, logger *slog.Logger) *RequirementService {
+	return &RequirementService{db: db, requirements: requirements, bids: bids, notifications: notifications, logs: logs, logger: logger}
 }
 
 // List returns requirements with filters and pagination.
@@ -129,48 +132,64 @@ func (s *RequirementService) UpdateStatus(id uint, status string, userID uint, u
 	return r, nil
 }
 
-// AcceptBid accepts a bid and creates the contract (delegated to contract service).
-func (s *RequirementService) AcceptBid(requirementID, bidID, userID uint, userName string, paymentType string, contracts *ContractService) (*model.Contract, error) {
-	r, err := s.requirements.FindByID(requirementID)
-	if err != nil {
-		return nil, err
-	}
-	if r.PublisherID != userID {
-		return nil, constants.ErrForbidden
-	}
-	bid, err := s.bids.FindByID(bidID)
-	if err != nil {
-		return nil, err
-	}
-	if bid.RequirementID != requirementID {
-		return nil, repository.ErrNotFound
-	}
-	if bid.Status != constants.BidPending {
-		return nil, constants.NewAppError(constants.CodeConflict, "该报价已处理")
-	}
-	bid.Status = constants.BidAccepted
-	if err := s.bids.Update(bid); err != nil {
-		return nil, fmt.Errorf("accept bid: %w", err)
-	}
-	r.WinnerID = bid.BidderID
-	r.Status = constants.RequirementInProgress
-	if err := s.requirements.Update(r); err != nil {
-		return nil, fmt.Errorf("update requirement after accept: %w", err)
-	}
-	contract, err := contracts.CreateFromBid(r, bid, userID, userName, paymentType)
-	if err != nil {
-		return nil, err
-	}
-	s.logs.Record(userID, userName, "requirement.accept_bid", "requirement", r.ID, fmt.Sprintf("采纳报价 %d", bidID))
-	// Notify the winning freelancer that their bid was accepted.
-	s.notifications.Notify(NotifyCommand{
-		RecipientID: bid.BidderID,
-		BizType:     constants.NotificationBidAccepted,
-		BizID:       bid.ID,
-		BizNo:       fmt.Sprintf("报价 #%d", bid.ID),
-		RefID:       r.ID,
-		Title:       "报价已被采纳",
-		Content:     fmt.Sprintf("你对需求「%s」的报价（%.2f 元）已被采纳，合同 %s 已生成待签署。", r.Title, bid.Amount, contract.ContractNo),
+// AcceptBid accepts a bid and creates the contract. The bid transition,
+// requirement transition, contract row and the "bid accepted" notification
+// all commit in one transaction (rows locked FOR UPDATE); if any write fails
+// (including the notification) nothing is persisted, so an accepted bid always
+// has a readable notification and retrying never duplicates it.
+func (s *RequirementService) AcceptBid(requirementID, bidID, userID uint, userName string, paymentType string, contracts *ContractService) (contractOut *model.Contract, errOut error) {
+	errTx := s.db.Transaction(func(tx *gorm.DB) error {
+		txReqs := repository.NewRequirementRepository(tx)
+		txBids := repository.NewBidRepository(tx)
+
+		r, err := txReqs.FindByIDForUpdate(requirementID)
+		if err != nil {
+			return err
+		}
+		if r.PublisherID != userID {
+			return constants.ErrForbidden
+		}
+		bid, err := txBids.FindByIDForUpdate(bidID)
+		if err != nil {
+			return err
+		}
+		if bid.RequirementID != requirementID {
+			return repository.ErrNotFound
+		}
+		if bid.Status != constants.BidPending {
+			return constants.NewAppError(constants.CodeConflict, "该报价已处理")
+		}
+		bid.Status = constants.BidAccepted
+		if err := txBids.Update(bid); err != nil {
+			return fmt.Errorf("accept bid: %w", err)
+		}
+		r.WinnerID = bid.BidderID
+		r.Status = constants.RequirementInProgress
+		if err := txReqs.Update(r); err != nil {
+			return fmt.Errorf("update requirement after accept: %w", err)
+		}
+		contract, err := contracts.CreateFromBidTx(tx, r, bid, userID, paymentType)
+		if err != nil {
+			return err
+		}
+		// Notify the winning freelancer. Failure rolls the whole accept back.
+		if err := s.notifications.NotifyTx(tx, NotifyCommand{
+			RecipientID: bid.BidderID,
+			BizType:     constants.NotificationBidAccepted,
+			BizID:       bid.ID,
+			BizNo:       fmt.Sprintf("报价 #%d", bid.ID),
+			RefID:       r.ID,
+			Title:       "报价已被采纳",
+			Content:     fmt.Sprintf("你对需求「%s」的报价（%.2f 元）已被采纳，合同 %s 已生成待签署。", r.Title, bid.Amount, contract.ContractNo),
+		}); err != nil {
+			return err
+		}
+		contractOut = contract
+		return nil
 	})
-	return contract, nil
+	if errTx != nil {
+		return nil, errTx
+	}
+	s.logs.Record(userID, userName, "requirement.accept_bid", "requirement", requirementID, fmt.Sprintf("采纳报价 %d", bidID))
+	return contractOut, nil
 }

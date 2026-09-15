@@ -2,10 +2,10 @@ package constants
 
 // User roles.
 const (
-	RoleRequester   = "requester"
-	RoleFreelancer  = "freelancer"
-	RoleBoth        = "both"
-	RoleAdmin       = "admin"
+	RoleRequester  = "requester"
+	RoleFreelancer = "freelancer"
+	RoleBoth       = "both"
+	RoleAdmin      = "admin"
 )
 
 // ValidRole reports whether a role is valid.

@@ -20,6 +20,6 @@ type LoginRequest struct {
 
 // AuthResponse carries the JWT token and the user.
 type AuthResponse struct {
-	Token string     `json:"token"`
+	Token string      `json:"token"`
 	User  *model.User `json:"user"`
 }

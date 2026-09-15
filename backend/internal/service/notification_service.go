@@ -9,6 +9,7 @@ import (
 	"github.com/gigmatch/gigmatch/internal/constants"
 	"github.com/gigmatch/gigmatch/internal/model"
 	"github.com/gigmatch/gigmatch/internal/repository"
+	"gorm.io/gorm"
 )
 
 // NotifyCommand is the input for emitting a single notification.
@@ -33,27 +34,23 @@ func NewNotificationService(notifications *repository.NotificationRepository, lo
 	return &NotificationService{notifications: notifications, logger: logger}
 }
 
-// Notify inserts a notification for one business event. It is idempotent on
-// (bizType, bizId): retrying the same event returns the existing notification
-// and never creates a duplicate. A failure never propagates to callers —
-// notifications are a side effect and must not break business flows.
-func (s *NotificationService) Notify(cmd NotifyCommand) {
-	if cmd.RecipientID == 0 || cmd.BizType == "" || cmd.BizID == 0 {
-		s.logger.Warn("skip notification: invalid command", "bizType", cmd.BizType, "bizId", cmd.BizID)
-		return
-	}
+// NotifyTx inserts a notification inside an existing business transaction.
+// It is idempotent on (bizType, bizId): a retried event is a no-op and never
+// overwrites an existing notification (e.g. its read state). Any other write
+// failure is returned so the caller rolls the whole transaction back — a
+// successful business state can never exist without its notification.
+func (s *NotificationService) NotifyTx(tx *gorm.DB, cmd NotifyCommand) error {
 	n, err := s.build(cmd)
 	if err != nil {
-		s.logger.Warn("build notification failed", "error", err)
-		return
+		return err
 	}
-	if err := s.notifications.Create(n); err != nil {
+	if err := repository.NewNotificationRepository(tx).Create(n); err != nil {
 		if errors.Is(err, repository.ErrDuplicateEvent) {
-			s.logger.Info("duplicate notification skipped", "eventKey", n.EventKey)
-			return
+			return nil
 		}
-		s.logger.Warn("create notification failed", "error", err, "eventKey", n.EventKey)
+		return fmt.Errorf("create notification: %w", err)
 	}
+	return nil
 }
 
 // NotifyErr works like Notify but returns the underlying error for callers

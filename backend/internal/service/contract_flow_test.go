@@ -51,9 +51,9 @@ func TestAcceptBidCreatesContract(t *testing.T) {
 
 	logSvc := NewOperationLogService(logRepo, logger)
 	notifSvc := NewNotificationService(notificationRepo, logger)
-	contractSvc := NewContractService(contractRepo, notifSvc, logSvc, logger)
-	reqSvc := NewRequirementService(reqRepo, bidRepo, notifSvc, logSvc, logger)
-	bidSvc := NewBidService(bidRepo, reqRepo, notifSvc, logSvc, logger)
+	contractSvc := NewContractService(db, contractRepo, notifSvc, logSvc, logger)
+	reqSvc := NewRequirementService(db, reqRepo, bidRepo, notifSvc, logSvc, logger)
+	bidSvc := NewBidService(db, bidRepo, reqRepo, notifSvc, logSvc, logger)
 
 	requirement, err := reqSvc.Create(dto.CreateRequirementRequest{
 		Title: "开发官网后台", Description: "需要一个功能完整的后台管理系统", MinBudget: 30000, MaxBudget: 60000, Skills: []string{"Go"},

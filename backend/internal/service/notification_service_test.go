@@ -186,9 +186,9 @@ func TestBusinessFlowEmitsNotifications(t *testing.T) {
 
 	logSvc := NewOperationLogService(repository.NewOperationLogRepository(db), logger)
 	notifSvc := NewNotificationService(notifRepo, logger)
-	reqSvc := NewRequirementService(reqRepo, bidRepo, notifSvc, logSvc, logger)
-	bidSvc := NewBidService(bidRepo, reqRepo, notifSvc, logSvc, logger)
-	contractSvc := NewContractService(contractRepo, notifSvc, logSvc, logger)
+	reqSvc := NewRequirementService(db, reqRepo, bidRepo, notifSvc, logSvc, logger)
+	bidSvc := NewBidService(db, bidRepo, reqRepo, notifSvc, logSvc, logger)
+	contractSvc := NewContractService(db, contractRepo, notifSvc, logSvc, logger)
 
 	reqEntity, err := reqSvc.Create(dto.CreateRequirementRequest{
 		Title: "通知流程需求", Description: "用于验证通知中心全流程的需求", MinBudget: 1000, MaxBudget: 5000, Skills: []string{"Go"},

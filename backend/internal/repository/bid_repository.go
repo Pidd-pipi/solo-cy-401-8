@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/gigmatch/gigmatch/internal/model"
 )
@@ -47,6 +48,19 @@ func (r *BidRepository) FindByID(id uint) (*model.Bid, error) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("find bid by id: %w", err)
+	}
+	return &b, nil
+}
+
+// FindByIDForUpdate loads a bid and takes a row lock; callers must run inside
+// a transaction. On SQLite the locking clause is a no-op.
+func (r *BidRepository) FindByIDForUpdate(id uint) (*model.Bid, error) {
+	var b model.Bid
+	if err := r.db.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Bidder").First(&b, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("find bid for update: %w", err)
 	}
 	return &b, nil
 }

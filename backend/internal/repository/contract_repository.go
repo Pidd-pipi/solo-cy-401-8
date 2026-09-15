@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/gigmatch/gigmatch/internal/model"
 )
@@ -53,6 +54,21 @@ func (r *ContractRepository) FindByID(id uint) (*model.Contract, error) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("find contract by id: %w", err)
+	}
+	return &c, nil
+}
+
+// FindByIDForUpdate loads a contract and takes a row lock; callers must run
+// inside a transaction. Preloads are intentionally omitted so MySQL locks a
+// single row rather than joining parties/requirements. On SQLite the locking
+// clause is a no-op.
+func (r *ContractRepository) FindByIDForUpdate(id uint) (*model.Contract, error) {
+	var c model.Contract
+	if err := r.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&c, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("find contract for update: %w", err)
 	}
 	return &c, nil
 }

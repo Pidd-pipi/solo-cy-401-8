@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/gigmatch/gigmatch/internal/model"
 )
@@ -67,6 +68,20 @@ func (r *RequirementRepository) FindByID(id uint) (*model.Requirement, error) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("find requirement by id: %w", err)
+	}
+	return &req, nil
+}
+
+// FindByIDForUpdate loads a requirement and takes a row lock; callers must
+// run inside a transaction. Preloads are omitted to keep the lock on a single
+// row. On SQLite the locking clause is a no-op.
+func (r *RequirementRepository) FindByIDForUpdate(id uint) (*model.Requirement, error) {
+	var req model.Requirement
+	if err := r.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&req, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("find requirement for update: %w", err)
 	}
 	return &req, nil
 }
